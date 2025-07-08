@@ -1,62 +1,43 @@
-// main.dart
 import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart'; // Paket Provider tidak digunakan di sini untuk saat ini
-
-import 'package:presiva/api/api_service.dart';
-// import 'package:presiva/providers/auth_provider.dart'; // Tidak digunakan di sini untuk saat ini
-// import 'package:presiva/providers/attendance_provider.dart'; // Tidak digunakan di sini untuk saat ini
+import 'package:presiva/splash_screen.dart';
+import 'package:presiva/utils/app_color.dart';
 import 'package:presiva/views/auth/login_screen.dart';
+import 'package:presiva/views/auth/register_screen.dart';
+import 'package:presiva/views/dashboard/dashboard_screen.dart';
+import 'package:presiva/views/profile/profile_screen.dart';
+
+import 'api/api_provider.dart';
+import 'helper/preference_handler.dart'; // Pastikan ini di-import
+import 'utils/app_constant.dart';
 
 void main() async {
-  // Pastikan inisialisasi Flutter sudah selesai sebelum menggunakan plugin
   WidgetsFlutterBinding.ensureInitialized();
+  await PreferenceHandler.init();
 
-  // Inisialisasi ApiService dengan base URL Anda.
-  // Ganti 'YOUR_API_BASE_URL' dengan URL API aktual Anda!
-  final ApiService apiService = ApiService(baseUrl: 'YOUR_API_BASE_URL');
+  final apiService = ApiService(baseUrl: AppConstants.baseUrl);
 
-  // PENTING: Jika Anda menggunakan shared_preferences secara sinkron di PreferenceHandler.getAuthToken(),
-  // Anda harus memastikan SharedPreferences diinisialisasi secara async di sini:
-  // await SharedPreferences.getInstance(); // Contoh, tapi ini akan dihandle oleh PreferenceHandler internal jika metode getAuthToken() dibuat async
-
-  runApp(
-    // Karena Anda ingin menghindari Provider untuk saat ini,
-    // kita akan langsung menjalankan MyApp dan meneruskan ApiService.
-    MyApp(apiService: apiService),
-
-    // Jika nanti Anda ingin menggunakan Provider, Anda bisa mengganti ini dengan:
-    /*
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (context) => AuthProvider(apiService),
-        ),
-        // Tambahkan provider lain di sini (misal AttendanceProvider)
-        // ChangeNotifierProvider(
-        //   create: (context) => AttendanceProvider(apiService),
-        // ),
-      ],
-      child: MyApp(apiService: apiService), // Atau MyApp tanpa passing apiService jika Provider sudah diaktifkan di atasnya
-    ),
-    */
-  );
+  runApp(MyApp(apiService: apiService));
 }
 
 class MyApp extends StatelessWidget {
   final ApiService apiService;
-
   const MyApp({super.key, required this.apiService});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Presensi App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      // Halaman awal aplikasi Anda adalah SplashScreen
-      home: SplashScreen(apiService: apiService),
+      debugShowCheckedModeBanner: false,
+      theme: AppThemes.lightTheme, // Tema yang digunakan
+      initialRoute: SplashScreen.id,
+      routes: {
+        SplashScreen.id: (context) => SplashScreen(apiService: apiService),
+        LoginScreen.id: (context) => LoginScreen(apiService: apiService),
+        RegisterScreen.id: (context) => RegisterScreen(apiService: apiService),
+        DashboardScreen.id:
+            (context) => DashboardScreen(apiService: apiService),
+
+        ProfileScreen.id: (context) => ProfileScreen(apiService: apiService),
+      },
     );
   }
 }

@@ -9,6 +9,7 @@ class SplashScreen extends StatefulWidget {
   final ApiService apiService;
 
   const SplashScreen({super.key, required this.apiService});
+  static const String id = '/SplashScreen';
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();

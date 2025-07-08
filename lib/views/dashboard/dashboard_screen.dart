@@ -1,13 +1,15 @@
 // lib/screens/dashboard/dashboard_screen.dart
 import 'package:flutter/material.dart';
-
+import 'package:presiva/api/api_provider.dart';
 import 'package:presiva/models/app_models.dart';
-
+import 'package:presiva/views/auth/login_screen.dart';
+import 'package:presiva/views/profile/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ApiService apiService;
 
   const DashboardScreen({super.key, required this.apiService});
+  static const String id = '/DashboardScreen';
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -64,6 +66,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  String _getGreetingMessage(String? jenisKelamin) {
+    if (jenisKelamin == 'M') {
+      return 'Selamat pagi gantengku';
+    } else if (jenisKelamin == 'F') {
+      return 'Selamat pagi cantikku';
+    } else {
+      return 'Selamat pagi';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,32 +115,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Modified: Personalized greeting
                     Text(
-                      'Selamat Datang, ${_currentUser!.name}!',
+                      '${_getGreetingMessage(_currentUser!.jenisKelamin)}, ${_currentUser!.name}!',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 8),
                     Text('Email: ${_currentUser!.email}'),
+                    Text(
+                      'Jenis Kelamin: ${_currentUser!.jenisKelamin == 'M'
+                          ? 'Laki-laki'
+                          : _currentUser!.jenisKelamin == 'F'
+                          ? 'Perempuan'
+                          : 'Tidak disebutkan'}',
+                    ), // Display full text for gender
                     Text('Batch ID: ${_currentUser!.batchId ?? "N/A"}'),
                     Text('Training ID: ${_currentUser!.trainingId ?? "N/A"}'),
-                    // Tambahkan informasi lain yang relevan
                     const SizedBox(height: 32),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => HistoryScreen(
-                                    apiService: widget.apiService,
-                                  ),
-                            ),
-                          );
-                        },
-                        child: const Text('Lihat Riwayat Absen'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                     Center(
                       child: ElevatedButton(
                         onPressed: () {
@@ -148,7 +151,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Center(
                       child: ElevatedButton(
                         onPressed: () async {
-                          // Contoh sederhana untuk check-in
                           setState(() {
                             _isLoading = true;
                           });
