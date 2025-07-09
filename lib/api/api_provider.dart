@@ -3,14 +3,15 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:presiva/helper/preference_handler.dart';
+import 'package:presiva/Endpoint.dart';
 import 'package:presiva/models/app_models.dart';
 
 class ApiService {
-  final String baseUrl;
+  // baseUrl tidak lagi diperlukan di sini karena sudah ada di kelas Endpoint
   String? _token;
 
-  ApiService({required this.baseUrl, String? initialToken})
-    : _token = initialToken;
+  // Constructor tanpa baseUrl
+  ApiService({String? initialToken}) : _token = initialToken;
 
   void setToken(String token) {
     _token = token;
@@ -33,10 +34,6 @@ class ApiService {
 
   // --- Authentication Endpoints ---
 
-  // lib/api/api_provider.dart
-
-  // ... (bagian lain dari file ApiService Anda)
-
   Future<User?> register({
     required String name,
     required String email,
@@ -48,7 +45,7 @@ class ApiService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/register'),
+        Uri.parse(Endpoint.register), // <--- Menggunakan Endpoint.register
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
           'Accept': 'application/json',
@@ -64,14 +61,12 @@ class ApiService {
         }),
       );
 
-      // --- PERBAIKAN DI SINI: Ubah 201 menjadi 200 ---
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['data'] != null &&
             responseData['data']['user'] != null) {
           return User.fromJson(responseData['data']['user']);
         } else if (responseData['user'] != null) {
-          // Jika 'user' langsung di root 'data' (sesuai output konsol Anda)
           return User.fromJson(responseData['user']);
         } else {
           print(
@@ -80,7 +75,6 @@ class ApiService {
           return null;
         }
       } else {
-        // Ini akan menangani kode status selain 200 (misal: 422, 500, dll.)
         print('Gagal registrasi: ${response.statusCode} - ${response.body}');
         return null;
       }
@@ -90,17 +84,11 @@ class ApiService {
     }
   }
 
-  // ... (sisa dari file ApiService Anda)
-
-  // lib/api/api_provider.dart
-
-  // ... (kode Anda yang lain)
-
   Future<AuthResponse?> login({
     required String email,
     required String password,
   }) async {
-    final url = Uri.parse('$baseUrl/api/login');
+    final url = Uri.parse(Endpoint.login); // <--- Menggunakan Endpoint.login
     try {
       final response = await http.post(
         url,
@@ -110,11 +98,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        // --- TAMBAHKAN BARIS INI UNTUK DEBUGGING ---
         print('Login success (200 OK) Response Body: $responseData');
-        // ------------------------------------------
 
-        // Pastikan 'data' tidak null sebelum mencoba menguraikannya
         if (responseData['data'] != null) {
           final authResponse = AuthResponse.fromJson(responseData['data']);
           await PreferenceHandler.saveAuthToken(authResponse.accessToken);
@@ -122,22 +107,22 @@ class ApiService {
           return authResponse;
         } else {
           print('Login failed: "data" key is missing or null in response.');
-          return null; // Mengembalikan null karena struktur tidak sesuai
+          return null;
         }
       } else {
         print('Failed to login: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Error during login: $e'); // Ini yang Anda lihat sekarang
+      print('Error during login: $e');
       return null;
     }
   }
 
-  // ... (sisa dari kode Anda)
-
   Future<User?> getProfile() async {
-    final url = Uri.parse('$baseUrl/api/profile');
+    final url = Uri.parse(
+      Endpoint.profile,
+    ); // <--- Menggunakan Endpoint.profile
     try {
       final response = await http.get(
         url,
@@ -164,7 +149,7 @@ class ApiService {
   }
 
   Future<void> logout() async {
-    final url = Uri.parse('$baseUrl/api/logout');
+    final url = Uri.parse(Endpoint.logout); // <--- Menggunakan Endpoint.logout
     try {
       final response = await http.post(
         url,
@@ -183,33 +168,32 @@ class ApiService {
     }
   }
 
-  Future<AuthResponse?> refreshToken() async {
-    final url = Uri.parse('$baseUrl/api/refresh');
-    try {
-      final response = await http.post(
-        url,
-        headers: _getHeaders(requireAuth: true),
-      );
+  // Future<AuthResponse?> refreshToken() async {
+  //   final url = Uri.parse(Endpoint.refresh); // <--- Menggunakan Endpoint.refresh
+  //   try {
+  //     final response = await http.post(
+  //       url,
+  //       headers: _getHeaders(requireAuth: true),
+  //     );
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final authResponse = AuthResponse.fromJson(responseData['data']);
-        await PreferenceHandler.saveAuthToken(authResponse.accessToken);
-        _token = authResponse.accessToken;
-        return authResponse;
-      } else {
-        print(
-          'Failed to refresh token: ${response.statusCode} - ${response.body}',
-        );
-        return null;
-      }
-    } catch (e) {
-      print('Error during token refresh: $e');
-      return null;
-    }
-  }
+  //     if (response.statusCode == 200) {
+  //       final responseData = json.decode(response.body);
+  //       final authResponse = AuthResponse.fromJson(responseData['data']);
+  //       await PreferenceHandler.saveAuthToken(authResponse.accessToken);
+  //       _token = authResponse.accessToken;
+  //       return authResponse;
+  //     } else {
+  //       print(
+  //           'Failed to refresh token: ${response.statusCode} - ${response.body}');
+  //       return null;
+  //     }
+  //   } catch (e) {
+  //     print('Error during token refresh: $e');
+  //     return null;
+  //   }
+  // }
 
-  // --- Attendance Endpoints (tetap seperti sebelumnya) ---
+  // --- Attendance Endpoints ---
 
   Future<Attendance?> checkIn({
     required double checkInLat,
@@ -218,7 +202,9 @@ class ApiService {
     required String status,
     String? alasanIzin,
   }) async {
-    final url = Uri.parse('$baseUrl/api/absen/check-in');
+    final url = Uri.parse(
+      Endpoint.checkIn,
+    ); // <--- Menggunakan Endpoint.checkIn
     final payload = {
       'check_in_lat': checkInLat.toString(),
       'check_in_lng': checkInLng.toString(),
@@ -254,7 +240,9 @@ class ApiService {
     required double checkOutLng,
     required String checkOutAddress,
   }) async {
-    final url = Uri.parse('$baseUrl/api/absen/check-out');
+    final url = Uri.parse(
+      Endpoint.checkOut,
+    ); // <--- Menggunakan Endpoint.checkOut
     try {
       final response = await http.post(
         url,
@@ -280,7 +268,9 @@ class ApiService {
   }
 
   Future<Attendance?> getTodayAttendance() async {
-    final url = Uri.parse('$baseUrl/api/absen/today');
+    final url = Uri.parse(
+      Endpoint.todayAbsen,
+    ); // <--- Menggunakan Endpoint.todayAbsen
     try {
       final response = await http.get(
         url,
@@ -306,7 +296,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>?> getAttendanceStats() async {
-    final url = Uri.parse('$baseUrl/api/absen/today');
+    final url = Uri.parse(
+      Endpoint.statAbsen,
+    ); // <--- Menggunakan Endpoint.statAbsen
     try {
       final response = await http.get(
         url,
@@ -330,14 +322,13 @@ class ApiService {
   // --- Training & Batch Endpoints ---
 
   Future<List<Training>> getTrainings() async {
-    // Mengubah return type menjadi non-nullable List
-    final url = Uri.parse('$baseUrl/api/trainings');
+    final url = Uri.parse(
+      Endpoint.getTraining,
+    ); // <--- Menggunakan Endpoint.getTraining
     try {
       final response = await http.get(
         url,
-        headers: _getHeaders(
-          requireAuth: false,
-        ), // *** PENTING: Ubah ini menjadi false ***
+        headers: _getHeaders(requireAuth: false),
       );
 
       if (response.statusCode == 200) {
@@ -347,28 +338,27 @@ class ApiService {
               .map((e) => Training.fromJson(e as Map<String, dynamic>))
               .toList();
         }
-        return []; // Mengembalikan list kosong jika data bukan list atau null
+        return [];
       } else {
         print(
           'Failed to get trainings: ${response.statusCode} - ${response.body}',
         );
-        return []; // Mengembalikan list kosong jika gagal
+        return [];
       }
     } catch (e) {
       print('Error getting trainings: $e');
-      return []; // Mengembalikan list kosong jika ada error
+      return [];
     }
   }
 
   Future<List<Batch>> getBatches() async {
-    // Mengganti listAllBatches dengan getBatches
-    final url = Uri.parse('$baseUrl/api/batches');
+    final url = Uri.parse(
+      Endpoint.getBatch,
+    ); // <--- Menggunakan Endpoint.getBatch
     try {
       final response = await http.get(
         url,
-        headers: _getHeaders(
-          requireAuth: false,
-        ), // *** PENTING: Ubah ini menjadi false ***
+        headers: _getHeaders(requireAuth: false),
       );
 
       if (response.statusCode == 200) {
@@ -378,21 +368,23 @@ class ApiService {
               .map((e) => Batch.fromJson(e as Map<String, dynamic>))
               .toList();
         }
-        return []; // Mengembalikan list kosong jika data bukan list atau null
+        return [];
       } else {
         print(
           'Failed to get batches: ${response.statusCode} - ${response.body}',
         );
-        return []; // Mengembalikan list kosong jika gagal
+        return [];
       }
     } catch (e) {
       print('Error getting batches: $e');
-      return []; // Mengembalikan list kosong jika ada error
+      return [];
     }
   }
 
   Future<Batch?> getBatchDetail(int batchId) async {
-    final url = Uri.parse('$baseUrl/api/batches/$batchId');
+    final url = Uri.parse(
+      Endpoint.getBatchDetail(batchId),
+    ); // <--- Menggunakan Endpoint.batchDetail
     try {
       final response = await http.get(
         url,
@@ -415,7 +407,9 @@ class ApiService {
   }
 
   Future<Training?> getTrainingDetail(int trainingId) async {
-    final url = Uri.parse('$baseUrl/api/trainings/$trainingId');
+    final url = Uri.parse(
+      Endpoint.getTrainingDetail(trainingId),
+    ); // <--- Menggunakan Endpoint.trainingDetail
     try {
       final response = await http.get(
         url,
@@ -439,34 +433,14 @@ class ApiService {
 
   // --- Password Reset Endpoints ---
 
-  // Future<String?> forgotPassword({required String email}) async {
-  //   final url = Uri.parse('$baseUrl/api/reset-password');
-  //   try {
-  //     final response = await http.post(
-  //       url,
-  //       headers: _getHeaders(),
-  //       body: json.encode({'email': email}),
-  //     );
-
-  //     if (response.statusCode == 200) {
-  //       final responseData = json.decode(response.body);
-  //       return responseData['message']; // Mengembalikan pesan sukses
-  //     } else {
-  //       print('Failed to send OTP: ${response.statusCode} - ${response.body}');
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     print('Error during forgot password request: $e');
-  //     return null;
-  //   }
-  // }
-
   Future<String?> resetPassword({
     required String email,
     required String otp,
     required String newPassword,
   }) async {
-    final url = Uri.parse('$baseUrl/api/reset-password');
+    final url = Uri.parse(
+      Endpoint.resetPassword,
+    ); // <--- Menggunakan Endpoint.resetPassword
     try {
       final response = await http.post(
         url,
@@ -480,7 +454,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        return responseData['message']; // Mengembalikan pesan sukses
+        return responseData['message'];
       } else {
         print(
           'Failed to reset password: ${response.statusCode} - ${response.body}',
@@ -496,7 +470,9 @@ class ApiService {
   // --- Placeholder Endpoints ---
 
   Future<List<Attendance>?> getAttendanceHistory() async {
-    final url = Uri.parse('$baseUrl/api/absen/history');
+    final url = Uri.parse(
+      Endpoint.allHistoryAbsen,
+    ); // <--- Menggunakan Endpoint.allHistoryAbsen
     try {
       final response = await http.get(
         url,
@@ -527,7 +503,9 @@ class ApiService {
     required String name,
     required String email,
   }) async {
-    final url = Uri.parse('$baseUrl/api/profile/update');
+    final url = Uri.parse(
+      Endpoint.updateProfile,
+    ); // <--- Menggunakan Endpoint.updateProfile
     try {
       final response = await http.put(
         url,
@@ -551,7 +529,9 @@ class ApiService {
   }
 
   Future<bool> deleteAttendance(int attendanceId) async {
-    final url = Uri.parse('$baseUrl/api/absen/$attendanceId');
+    final url = Uri.parse(
+      Endpoint.deleteAttendance(attendanceId),
+    ); // <--- Menggunakan Endpoint.deleteAttendance
     try {
       final response = await http.delete(
         url,

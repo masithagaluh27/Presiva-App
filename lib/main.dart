@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:presiva/splash_screen.dart';
 import 'package:presiva/utils/app_color.dart';
@@ -8,13 +9,18 @@ import 'package:presiva/views/profile/profile_screen.dart';
 
 import 'api/api_provider.dart';
 import 'helper/preference_handler.dart'; // Pastikan ini di-import
-import 'utils/app_constant.dart';
+import 'utils/app_constant.dart'; // Tetap biarkan jika AppConstants digunakan di tempat lain
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await PreferenceHandler.init();
+  await PreferenceHandler.init(); // Inisialisasi PreferenceHandler
 
-  final apiService = ApiService(baseUrl: AppConstants.baseUrl);
+  // Dapatkan token yang tersimpan di preferensi jika ada
+  final String? initialToken = await PreferenceHandler.getAuthToken();
+
+  // Inisialisasi ApiService tanpa baseUrl di konstruktor
+  // ApiService akan menggunakan baseUrl dari Endpoint secara internal
+  final apiService = ApiService(initialToken: initialToken);
 
   runApp(MyApp(apiService: apiService));
 }
@@ -35,7 +41,6 @@ class MyApp extends StatelessWidget {
         RegisterScreen.id: (context) => RegisterScreen(apiService: apiService),
         DashboardScreen.id:
             (context) => DashboardScreen(apiService: apiService),
-
         ProfileScreen.id: (context) => ProfileScreen(apiService: apiService),
       },
     );

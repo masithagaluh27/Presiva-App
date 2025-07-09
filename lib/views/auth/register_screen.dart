@@ -119,16 +119,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _busy = true);
     try {
       final User? user = await widget.apiService.register(
-        // Ini akan mengembalikan User jika sukses, atau null jika gagal
         name: _name.text,
         email: _email.text,
         password: _pass.text,
         batchId: _fixedBatch2.id,
         jenisKelamin: _gender!,
         trainingId: _selectedTraining!.id,
+        // Perbaikan di sini: Tambahkan prefiks Data URI
         profilePhoto:
-            _photo != null ? base64Encode(await _photo!.readAsBytes()) : null,
+            _photo != null
+                ? 'data:image/png;base64,${base64Encode(await _photo!.readAsBytes())}'
+                : null,
       );
+      // ...
 
       if (mounted) {
         setState(() => _busy = false);
