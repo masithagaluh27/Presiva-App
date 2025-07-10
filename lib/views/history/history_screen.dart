@@ -1,7 +1,7 @@
 // lib/screens/history/history_screen.dart
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // Import the intl package
 import 'package:presiva/api/api_provider.dart';
-
 import 'package:presiva/models/app_models.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -78,6 +78,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 itemCount: _attendanceHistory!.length,
                 itemBuilder: (context, index) {
                   final attendance = _attendanceHistory![index];
+                  // Parse checkIn string to DateTime
+                  final checkInDateTime = DateTime.tryParse(attendance.checkIn);
+                  // Format the date if parsing is successful
+                  final formattedDate =
+                      checkInDateTime != null
+                          ? DateFormat('dd MMMM yyyy').format(checkInDateTime)
+                          : 'N/A'; // Or handle error appropriately
+
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Padding(
@@ -86,13 +94,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Tanggal: ${attendance.date}',
+                            'Tanggal: $formattedDate', // Use the formatted date
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          Text('Check-in: ${attendance.checkInTime}'),
+                          Text('Check-in: ${attendance.checkIn}'),
                           Text('Status: ${attendance.status}'),
-                          if (attendance.checkOutTime != null)
-                            Text('Check-out: ${attendance.checkOutTime}'),
+                          if (attendance.checkOut != null)
+                            Text('Check-out: ${attendance.checkOut}'),
                           if (attendance.alasanIzin != null &&
                               attendance.alasanIzin!.isNotEmpty)
                             Text('Alasan: ${attendance.alasanIzin}'),

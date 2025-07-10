@@ -5,18 +5,17 @@ import 'package:presiva/utils/app_color.dart';
 import 'package:presiva/views/auth/login_screen.dart';
 import 'package:presiva/views/auth/register_screen.dart';
 import 'package:presiva/views/dashboard/dashboard_screen.dart';
-import 'package:presiva/views/profile/profile_screen.dart';
+import 'package:presiva/views/auth/profile_screen.dart';
 
 import 'api/api_provider.dart';
 import 'helper/preference_handler.dart'; // Pastikan ini di-import
-import 'utils/app_constant.dart'; // Tetap biarkan jika AppConstants digunakan di tempat lain
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await PreferenceHandler.init(); // Inisialisasi PreferenceHandler
 
   // Dapatkan token yang tersimpan di preferensi jika ada
-  final String? initialToken = await PreferenceHandler.getAuthToken();
+  final String? initialToken = PreferenceHandler.getAuthToken();
 
   // Inisialisasi ApiService tanpa baseUrl di konstruktor
   // ApiService akan menggunakan baseUrl dari Endpoint secara internal

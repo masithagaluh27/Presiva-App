@@ -2,19 +2,19 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:presiva/helper/preference_handler.dart';
+import 'package:intl/intl.dart';
 import 'package:presiva/Endpoint.dart';
+import 'package:presiva/helper/preference_handler.dart';
 import 'package:presiva/models/app_models.dart';
 
 class ApiService {
-  // baseUrl tidak lagi diperlukan di sini karena sudah ada di kelas Endpoint
   String? _token;
 
-  // Constructor tanpa baseUrl
   ApiService({String? initialToken}) : _token = initialToken;
 
   void setToken(String token) {
     _token = token;
+    print('Token diatur: $_token'); // Debugging: Konfirmasi token diatur
   }
 
   void clearToken() {
@@ -38,14 +38,14 @@ class ApiService {
     required String name,
     required String email,
     required String password,
-    required int batchId,
     required String jenisKelamin,
-    required int trainingId,
     String? profilePhoto,
+    int? batchId, // Added batchId
+    int? trainingId, // Added trainingId
   }) async {
     try {
       final response = await http.post(
-        Uri.parse(Endpoint.register), // <--- Menggunakan Endpoint.register
+        Uri.parse(Endpoint.register),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
           'Accept': 'application/json',
@@ -54,10 +54,11 @@ class ApiService {
           'name': name,
           'email': email,
           'password': password,
-          'batch_id': batchId,
           'jenis_kelamin': jenisKelamin,
-          'training_id': trainingId,
           if (profilePhoto != null) 'profile_photo': profilePhoto,
+          if (batchId != null) 'batch_id': batchId, // Added batch_id to payload
+          if (trainingId != null)
+            'training_id': trainingId, // Added training_id to payload
         }),
       );
 
@@ -88,7 +89,7 @@ class ApiService {
     required String email,
     required String password,
   }) async {
-    final url = Uri.parse(Endpoint.login); // <--- Menggunakan Endpoint.login
+    final url = Uri.parse(Endpoint.login);
     try {
       final response = await http.post(
         url,
@@ -120,9 +121,7 @@ class ApiService {
   }
 
   Future<User?> getProfile() async {
-    final url = Uri.parse(
-      Endpoint.profile,
-    ); // <--- Menggunakan Endpoint.profile
+    final url = Uri.parse(Endpoint.profile);
     try {
       final response = await http.get(
         url,
@@ -149,7 +148,7 @@ class ApiService {
   }
 
   Future<void> logout() async {
-    final url = Uri.parse(Endpoint.logout); // <--- Menggunakan Endpoint.logout
+    final url = Uri.parse(Endpoint.logout);
     try {
       final response = await http.post(
         url,
@@ -168,44 +167,24 @@ class ApiService {
     }
   }
 
-  // Future<AuthResponse?> refreshToken() async {
-  //   final url = Uri.parse(Endpoint.refresh); // <--- Menggunakan Endpoint.refresh
-  //   try {
-  //     final response = await http.post(
-  //       url,
-  //       headers: _getHeaders(requireAuth: true),
-  //     );
-
-  //     if (response.statusCode == 200) {
-  //       final responseData = json.decode(response.body);
-  //       final authResponse = AuthResponse.fromJson(responseData['data']);
-  //       await PreferenceHandler.saveAuthToken(authResponse.accessToken);
-  //       _token = authResponse.accessToken;
-  //       return authResponse;
-  //     } else {
-  //       print(
-  //           'Failed to refresh token: ${response.statusCode} - ${response.body}');
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     print('Error during token refresh: $e');
-  //     return null;
-  //   }
-  // }
-
   // --- Attendance Endpoints ---
 
-  Future<Attendance?> checkIn({
+  // MODIFIKASI: Mengembalikan Attendance, bukan Attendance? dan menangani 409
+  Future<Attendance> checkIn({
     required double checkInLat,
     required double checkInLng,
     required String checkInAddress,
     required String status,
     String? alasanIzin,
   }) async {
-    final url = Uri.parse(
-      Endpoint.checkIn,
-    ); // <--- Menggunakan Endpoint.checkIn
+    final now = DateTime.now();
+    final formattedDate = DateFormat('yyyy-MM-dd').format(now);
+    final formattedTime = DateFormat('HH:mm').format(now);
+
+    final url = Uri.parse(Endpoint.checkIn);
     final payload = {
+      'attendance_date': formattedDate,
+      'check_in': formattedTime,
       'check_in_lat': checkInLat.toString(),
       'check_in_lng': checkInLng.toString(),
       'check_in_address': checkInAddress,
@@ -222,55 +201,93 @@ class ApiService {
         body: json.encode(payload),
       );
 
+      final responseData = json.decode(response.body);
+
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
         return Attendance.fromJson(responseData['data']);
+      } else if (response.statusCode == 409) {
+        // Server bilang sudah absen masuk, tapi berikan data absennya
+        if (responseData['data'] != null) {
+          print(
+            'Info: Absen masuk sudah tercatat, memperbarui status dari respons 409.',
+          );
+          return Attendance.fromJson(responseData['data']);
+        } else {
+          // 409 tanpa data yang relevan, masih bisa dianggap error
+          throw Exception(
+            'Failed to check in (Conflict): ${responseData['message'] ?? 'Unknown error'}',
+          );
+        }
       } else {
-        print('Failed to check in: ${response.statusCode} - ${response.body}');
-        return null;
+        // Tangani kode status error lainnya
+        throw Exception(
+          'Failed to check in: ${response.statusCode} - ${responseData['message'] ?? response.body}',
+        );
       }
     } catch (e) {
       print('Error during check-in: $e');
-      return null;
+      rethrow; // Melempar ulang exception untuk ditangani di layer UI
     }
   }
 
-  Future<Attendance?> checkOut({
+  // MODIFIKASI: Mengembalikan Attendance, bukan Attendance? dan menangani 409
+  Future<Attendance> checkOut({
     required double checkOutLat,
     required double checkOutLng,
     required String checkOutAddress,
   }) async {
-    final url = Uri.parse(
-      Endpoint.checkOut,
-    ); // <--- Menggunakan Endpoint.checkOut
+    final now = DateTime.now();
+    final formattedDate = DateFormat('yyyy-MM-dd').format(now);
+    final formattedTime = DateFormat('HH:mm').format(now);
+
+    final url = Uri.parse(Endpoint.checkOut);
     try {
       final response = await http.post(
         url,
         headers: _getHeaders(requireAuth: true),
         body: json.encode({
+          'attendance_date': formattedDate,
+          'check_out': formattedTime,
           'check_out_lat': checkOutLat.toString(),
           'check_out_lng': checkOutLng.toString(),
           'check_out_address': checkOutAddress,
         }),
       );
 
+      final responseData = json.decode(response.body);
+
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
         return Attendance.fromJson(responseData['data']);
+      } else if (response.statusCode == 409) {
+        // Server bilang sudah absen keluar, tapi berikan data absennya
+        if (responseData['data'] != null) {
+          print(
+            'Info: Absen keluar sudah tercatat, memperbarui status dari respons 409.',
+          );
+          return Attendance.fromJson(responseData['data']);
+        } else {
+          // 409 tanpa data yang relevan, masih bisa dianggap error
+          throw Exception(
+            'Failed to check out (Conflict): ${responseData['message'] ?? 'Unknown error'}',
+          );
+        }
       } else {
-        print('Failed to check out: ${response.statusCode} - ${response.body}');
-        return null;
+        // Tangani kode status error lainnya
+        throw Exception(
+          'Failed to check out: ${response.statusCode} - ${responseData['message'] ?? response.body}',
+        );
       }
     } catch (e) {
       print('Error during check-out: $e');
-      return null;
+      rethrow; // Melempar ulang exception untuk ditangani di layer UI
     }
   }
 
+  // MODIFIKASI: Menyesuaikan penanganan error agar lebih konsisten
   Future<Attendance?> getTodayAttendance() async {
-    final url = Uri.parse(
-      Endpoint.todayAbsen,
-    ); // <--- Menggunakan Endpoint.todayAbsen
+    final now = DateTime.now();
+    final formattedDate = DateFormat('yyyy-MM-dd').format(now);
+    final url = Uri.parse('${Endpoint.todayAbsen}?date=$formattedDate');
     try {
       final response = await http.get(
         url,
@@ -282,23 +299,27 @@ class ApiService {
         if (responseData['data'] != null) {
           return Attendance.fromJson(responseData['data']);
         }
-        return null;
+        return null; // Tidak ada data absen di key 'data' untuk 200 OK
+      } else if (response.statusCode == 404) {
+        print('Tidak ada data absensi untuk tanggal ini (404 Not Found).');
+        return null; // Secara eksplisit mengembalikan null untuk 404, menandakan tidak ada catatan untuk hari ini
       } else {
-        print(
-          'Failed to get today attendance: ${response.statusCode} - ${response.body}',
+        // Untuk status kode lainnya, anggap sebagai error dan lempar Exception
+        final responseData = json.decode(
+          response.body,
+        ); // Parse untuk mendapatkan pesan jika ada
+        throw Exception(
+          'Failed to get today attendance: ${response.statusCode} - ${responseData['message'] ?? response.body}',
         );
-        return null;
       }
     } catch (e) {
       print('Error getting today attendance: $e');
-      return null;
+      rethrow; // Melempar ulang exception untuk ditangani di layer UI
     }
   }
 
   Future<Map<String, dynamic>?> getAttendanceStats() async {
-    final url = Uri.parse(
-      Endpoint.statAbsen,
-    ); // <--- Menggunakan Endpoint.statAbsen
+    final url = Uri.parse(Endpoint.statAbsen);
     try {
       final response = await http.get(
         url,
@@ -322,9 +343,7 @@ class ApiService {
   // --- Training & Batch Endpoints ---
 
   Future<List<Training>> getTrainings() async {
-    final url = Uri.parse(
-      Endpoint.getTraining,
-    ); // <--- Menggunakan Endpoint.getTraining
+    final url = Uri.parse(Endpoint.getTraining);
     try {
       final response = await http.get(
         url,
@@ -352,9 +371,7 @@ class ApiService {
   }
 
   Future<List<Batch>> getBatches() async {
-    final url = Uri.parse(
-      Endpoint.getBatch,
-    ); // <--- Menggunakan Endpoint.getBatch
+    final url = Uri.parse(Endpoint.getBatch);
     try {
       final response = await http.get(
         url,
@@ -382,9 +399,7 @@ class ApiService {
   }
 
   Future<Batch?> getBatchDetail(int batchId) async {
-    final url = Uri.parse(
-      Endpoint.getBatchDetail(batchId),
-    ); // <--- Menggunakan Endpoint.batchDetail
+    final url = Uri.parse(Endpoint.getBatchDetail(batchId));
     try {
       final response = await http.get(
         url,
@@ -407,9 +422,7 @@ class ApiService {
   }
 
   Future<Training?> getTrainingDetail(int trainingId) async {
-    final url = Uri.parse(
-      Endpoint.getTrainingDetail(trainingId),
-    ); // <--- Menggunakan Endpoint.trainingDetail
+    final url = Uri.parse(Endpoint.getTrainingDetail(trainingId));
     try {
       final response = await http.get(
         url,
@@ -438,9 +451,7 @@ class ApiService {
     required String otp,
     required String newPassword,
   }) async {
-    final url = Uri.parse(
-      Endpoint.resetPassword,
-    ); // <--- Menggunakan Endpoint.resetPassword
+    final url = Uri.parse(Endpoint.resetPassword);
     try {
       final response = await http.post(
         url,
@@ -470,9 +481,7 @@ class ApiService {
   // --- Placeholder Endpoints ---
 
   Future<List<Attendance>?> getAttendanceHistory() async {
-    final url = Uri.parse(
-      Endpoint.allHistoryAbsen,
-    ); // <--- Menggunakan Endpoint.allHistoryAbsen
+    final url = Uri.parse(Endpoint.allHistoryAbsen);
     try {
       final response = await http.get(
         url,
@@ -499,18 +508,27 @@ class ApiService {
     }
   }
 
+  // Metode updateProfile yang diperbarui
   Future<User?> updateProfile({
     required String name,
     required String email,
+    String? profilePhoto, // <-- Parameter ini ditambahkan
   }) async {
-    final url = Uri.parse(
-      Endpoint.updateProfile,
-    ); // <--- Menggunakan Endpoint.updateProfile
+    final url = Uri.parse(Endpoint.updateProfile);
     try {
+      final Map<String, dynamic> bodyData = {'name': name, 'email': email};
+
+      if (profilePhoto != null) {
+        bodyData['profile_photo'] =
+            profilePhoto; // <-- Menambahkan foto ke body
+      }
+
       final response = await http.put(
         url,
         headers: _getHeaders(requireAuth: true),
-        body: json.encode({'name': name, 'email': email}),
+        body: json.encode(
+          bodyData,
+        ), // Menggunakan bodyData yang sudah termasuk foto
       );
 
       if (response.statusCode == 200) {
@@ -529,9 +547,7 @@ class ApiService {
   }
 
   Future<bool> deleteAttendance(int attendanceId) async {
-    final url = Uri.parse(
-      Endpoint.deleteAttendance(attendanceId),
-    ); // <--- Menggunakan Endpoint.deleteAttendance
+    final url = Uri.parse(Endpoint.deleteAttendance(attendanceId));
     try {
       final response = await http.delete(
         url,

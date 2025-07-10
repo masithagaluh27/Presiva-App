@@ -33,7 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final Batch _fixedBatch2 = Batch(
     id: 1, // <-- MENJADI 1
-    title: 'Batch 2',
+    batchKe: 'Batch 2',
     startDate: null,
     endDate: null,
   );
@@ -303,12 +303,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: _dec('Email', Icons.email),
                           keyboardType: TextInputType.emailAddress,
                           validator: (v) {
-                            if (v == null || v.isEmpty)
+                            if (v == null || v.isEmpty) {
                               return 'Email tidak boleh kosong';
+                            }
                             if (!RegExp(
                               r'^[\w\-.]+@([\w\-]+\.)+[\w]{2,4}$',
-                            ).hasMatch(v))
+                            ).hasMatch(v)) {
                               return 'Format email tidak valid';
+                            }
                             return null;
                           },
                         ),
@@ -328,8 +330,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty)
+                            if (v == null || v.isEmpty) {
                               return 'Password tidak boleh kosong';
+                            }
                             if (v.length < 6) return 'Minimal 6 karakter';
                             return null;
                           },
@@ -355,8 +358,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty)
+                            if (v == null || v.isEmpty) {
                               return 'Konfirmasi tidak boleh kosong';
+                            }
                             if (v != _pass.text) return 'Password tidak sama';
                             return null;
                           },
@@ -392,7 +396,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           readOnly: true,
                           initialValue:
                               _fixedBatch2
-                                  .title, // Selalu menampilkan "Batch 2"
+                                  .batchKe, // Selalu menampilkan "Batch 2"
                           // Validator dihapus sesuai permintaan
                         ),
                         const SizedBox(height: 16),

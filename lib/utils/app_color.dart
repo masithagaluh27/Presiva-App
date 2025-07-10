@@ -34,8 +34,7 @@ class AppThemes {
     colorScheme: ColorScheme.fromSwatch().copyWith(
       primary: primaryBaseColor,
       secondary: accentColor, // Warna aksen
-      surface: cardColorLight, // Warna permukaan (misalnya untuk Card)
-      onBackground: textColorLight, // Warna teks di atas background
+      surface: cardColorLight, // Warna teks di atas background
       onSurface: textColorLight, // Warna teks di atas permukaan (Card)
     ),
     textTheme: const TextTheme(

@@ -4,7 +4,7 @@ import 'package:presiva/views/auth/register_screen.dart';
 import 'package:presiva/views/dashboard/dashboard_screen.dart';
 
 /// ---------------------------------------------------------------------------
-///  LoginScreen – clean & responsive
+///   LoginScreen – clean & responsive
 /// ---------------------------------------------------------------------------
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.apiService});
@@ -24,34 +24,61 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      print('LoginScreen: Form validation failed.'); // Debugging print
+      return;
+    }
     setState(() => _busy = true);
 
-    final token = await widget.apiService.login(
-      email: _email.text.trim(),
-      password: _password.text.trim(),
-    );
+    final String email = _email.text.trim();
+    final String password = _password.text.trim();
 
-    if (!mounted) return;
-    setState(() => _busy = false);
+    print(
+      'LoginScreen: Attempting login with Email: $email',
+    ); // Debugging print
 
-    if (token != null) {
-      Navigator.pushReplacement(
+    try {
+      final authResponse = await widget.apiService.login(
+        email: email,
+        password: password,
+      );
+
+      print('LoginScreen: Login API call completed.'); // Debugging print
+
+      if (!mounted) return; // Pastikan widget masih ada di tree
+      setState(() => _busy = false);
+
+      if (authResponse != null) {
+        print(
+          'LoginScreen: Login successful for user: ${authResponse.user.name}',
+        ); // Debugging print
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DashboardScreen(apiService: widget.apiService),
+          ),
+        );
+      } else {
+        print(
+          'LoginScreen: Login failed, token is null or API response was not successful.',
+        ); // Debugging print
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login gagal! Cek email & password.')),
+        );
+      }
+    } catch (e) {
+      print('LoginScreen: Caught error during login: $e'); // Debugging print
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(
         context,
-        MaterialPageRoute(
-          builder: (_) => DashboardScreen(apiService: widget.apiService),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login gagal! Cek email & password.')),
-      );
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    // final size = MediaQuery.of(context).size; // Variabel ini tidak digunakan, bisa dihapus jika tidak diperlukan
 
     return Scaffold(
       body: Stack(
@@ -87,7 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const CircleAvatar(
                         radius: 36,
-                        backgroundImage: AssetImage('assets/images/shaun.jpeg'),
+                        backgroundImage: AssetImage(
+                          'assets/images/shaun.jpeg',
+                        ), // Pastikan path ini benar
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -112,10 +141,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         hint: 'Email Address',
                         keyboard: TextInputType.emailAddress,
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty)
+                          if (v == null || v.trim().isEmpty) {
                             return 'Email tidak boleh kosong';
-                          if (!v.contains('@'))
+                          }
+                          if (!v.contains('@')) {
                             return 'Format email tidak valid';
+                          }
                           return null;
                         },
                       ),
@@ -134,10 +165,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                         validator: (v) {
-                          if (v == null || v.isEmpty)
+                          if (v == null || v.isEmpty) {
                             return 'Password tidak boleh kosong';
-                          if (v.length < 6)
+                          }
+                          if (v.length < 6) {
                             return 'Password minimal 6 karakter';
+                          }
                           return null;
                         },
                       ),
@@ -169,7 +202,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: _busy ? null : _submit,
+                          onPressed:
+                              _busy
+                                  ? null
+                                  : _submit, // Panggil _submit saat tombol ditekan
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
                             shape: RoundedRectangleBorder(
